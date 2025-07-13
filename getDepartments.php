@@ -19,7 +19,7 @@ try {
     // Get the database connection
     $conn = getDatabaseConnection();
 
-    $query = "SELECT `entity_id`, `entity_name`, `status` FROM `departmenttbl`";
+    $query = "SELECT `entity_id`, `entity_name`, `dept_address`, `status` FROM `departmenttbl`";
     $result = $conn->query($query);
 
     if (!$result) {
@@ -32,6 +32,7 @@ try {
         $departments[] = [
             "id" => $row["entity_id"],
             "name" => $row["entity_name"],
+            "address" => $row["dept_address"],
             "status" => $row["status"],
         ];
     }

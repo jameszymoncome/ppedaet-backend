@@ -32,9 +32,10 @@ try {
     $password = $data['password'] ?? '';
     $role = $data['role'] ?? '';
     $department = $data['department'] ?? '';
+    $position = $data['position'] ?? '';
 
     // Validate required fields
-    if (empty($lastname) || empty($firstname) || empty($email) || empty($username) || empty($password) || empty($role)) {
+    if (empty($lastname) || empty($firstname) || empty($email) || empty($username) || empty($password) || empty($role) || empty($position)) {
         echo json_encode(["success" => false, "message" => "Please fill out all required fields."]);
         exit();
     }
@@ -55,12 +56,12 @@ try {
 
     // Insert new user
     $insertSQL = "
-        INSERT INTO users (lastname, firstname, middlename, suffix, email, contactNumber, username, password, role, department)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (lastname, firstname, middlename, suffix, email, contactNumber, username, password, role, department, position)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
     $stmt = $conn->prepare($insertSQL);
     $stmt->bind_param(
-        "ssssssssss",
+        "sssssssssss",
         $lastname,
         $firstname,
         $middlename,
@@ -70,7 +71,8 @@ try {
         $username,
         $hashedPassword,
         $role,
-        $department
+        $department,
+        $position
     );
 
     if ($stmt->execute()) {

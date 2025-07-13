@@ -54,15 +54,17 @@ try {
 
     // Respond with the token and user details
     echo json_encode([
-        "success" => true,
-        "token" => $token,
-        "message" => 'Log in successful!',
-        "firstName" => $user['firstname'],
-        "lastname" => $user['lastname'],
-        "accessLevel" => $user['role'] === 'ADMIN' ? 'ADMIN' : ($user['role'] === 'DEPARTMENT HEAD' ? 'DEPARTMENT HEAD' : 'CUSTODIAN'),
-        "userId" => $user['user_id'],
-        "department" => $user['department'],
-    ]);
+    "success" => true,
+    "token" => $token,
+    "message" => 'Log in successful!',
+    "firstName" => $user['firstname'],
+    "lastname" => $user['lastname'],
+    "accessLevel" => $user['role'], // return exact role
+    "userId" => $user['user_id'],
+    "department" => $user['department'],
+    "position" => $user['position'],
+]);
+
 
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Database error: " . $e->getMessage()]);

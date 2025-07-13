@@ -24,8 +24,7 @@ try {
     $sql = "
         SELECT user_id, 
                CONCAT(lastname, ', ', firstname, ' ', middlename) AS full_name,
-               department, 
-               role 
+               department, role, email, contactNumber, position
         FROM users
         ORDER BY lastname ASC
     ";
