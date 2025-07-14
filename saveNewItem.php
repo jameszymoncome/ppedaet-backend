@@ -24,14 +24,18 @@ try {
     $lowValue = $input['lowValue'] ?? [];
     $items = $input['items'] ?? [];
     $endUser = $input['endUser'] ?? '';
+    $endUserId = $input['endUserId'] ?? '';
     $formType = $input['formType'] ?? '';
 
     if ($formType === 'High') {
-        $countResult = $conn->query("SELECT COUNT(*) AS total FROM par");
+        $countResult = $conn->query("SELECT COUNT(*) AS total, COUNT(DISTINCT parNo) AS parCounts FROM par");
         $countRow = $countResult->fetch_assoc();
         $propertyCount = $countRow['total'] + 1;
+        $parCount = $countRow['parCounts'] + 1;
 
         $insertedAirItems = [];
+        $insertedParGroups = [];
+        $generatedParNos = [];
 
         $currentYear = date("Y");
 
@@ -39,9 +43,8 @@ try {
             $key = $item['airNo'] . '|' . $item['airDate'] . '|' . $item['fund'] . '|';
 
             if (!isset($insertedAirItems[$key])) {
-                // Insert this unique AIR info
-                $stmt = $conn->prepare("INSERT INTO air_items (air_no, air_date, fund) VALUES (?, ?, ?)");
-                $stmt->bind_param("sss", $item['airNo'], $item['airDate'], $item['fund']);
+                $stmt = $conn->prepare("INSERT INTO air_items (air_no, air_date, fund, enduser_id) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("sssi", $item['airNo'], $item['airDate'], $item['fund'], $endUserId);
                 $stmt->execute();
 
                 $insertedAirItems[$key] = true;
@@ -49,10 +52,20 @@ try {
         }
 
         foreach ($highValue as $item) {
-            $propertyNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($propertyCount, 4, '0', STR_PAD_LEFT);
+            $groupKey = $item['airNo'] . '|' . $item['airDate'] . '|' . $item['fund'];
 
-            $stmt = $conn->prepare("INSERT INTO par(propertyNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssssd", $propertyNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            if (!isset($insertedParGroups[$groupKey])) {
+                $parNo = $currentYear . ' - ' . str_pad($parCount, 4, '0', STR_PAD_LEFT);
+                $insertedParGroups[$groupKey] = $parNo;
+                $generatedParNos[] = $parNo;
+                $parCount++;
+            }
+            
+            $propertyNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($propertyCount, 4, '0', STR_PAD_LEFT);
+            $parNo = $insertedParGroups[$groupKey];
+
+            $stmt = $conn->prepare("INSERT INTO par(parNo, propertyNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssssd", $parNo, $propertyNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $propertyCount = $propertyCount + 1;
@@ -63,16 +76,18 @@ try {
             "success" => true,
             "message" => "Data received",
             "received" => [
-                "inventoryNo" => $propertyNo
+                "parNo" => $generatedParNos
             ]
         ]);
     }
     else if ($formType === 'Low') {
-        $countResult = $conn->query("SELECT COUNT(*) AS total FROM ics");
+        $countResult = $conn->query("SELECT COUNT(*) AS total, COUNT(DISTINCT icsNo) AS icsCounts FROM ics");
         $countRow = $countResult->fetch_assoc();
         $inventoryCount = $countRow['total'] + 1;
+        $icsCount = $countRow['icsCounts'] + 1;
 
         $insertedAirItems = [];
+        $insertedIcsGroups = [];
 
         $currentYear = date("Y");
 
@@ -81,8 +96,8 @@ try {
 
             if (!isset($insertedAirItems[$key])) {
                 // Insert this unique AIR info
-                $stmt = $conn->prepare("INSERT INTO air_items (air_no, air_date, fund) VALUES (?, ?, ?)");
-                $stmt->bind_param("sss", $item['airNo'], $item['airDate'], $item['fund']);
+                $stmt = $conn->prepare("INSERT INTO air_items (air_no, air_date, fund, enduser_id) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("sssi", $item['airNo'], $item['airDate'], $item['fund'], $endUserId);
                 $stmt->execute();
 
                 $insertedAirItems[$key] = true;
@@ -90,10 +105,19 @@ try {
         }
 
         foreach ($lowValue as $item) {
-            $inventoryNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($inventoryCount, 4, '0', STR_PAD_LEFT);
+            $groupKey = $item['airNo'] . '|' . $item['airDate'] . '|' . $item['fund'];
 
-            $stmt = $conn->prepare("INSERT INTO ics(inventoryNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssssd", $inventoryNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            if (!isset($insertedIcsGroups[$groupKey])) {
+                $icsNo = $currentYear . ' - ' . str_pad($icsCount, 4, '0', STR_PAD_LEFT);
+                $insertedIcsGroups[$groupKey] = $icsNo;
+                $icsCount++;
+            }
+
+            $inventoryNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($inventoryCount, 4, '0', STR_PAD_LEFT);
+            $icsNo = $insertedIcsGroups[$groupKey];
+
+            $stmt = $conn->prepare("INSERT INTO ics(icsNo, inventoryNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssssd", $icsNo, $inventoryNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $inventoryCount = $inventoryCount + 1;
@@ -108,15 +132,19 @@ try {
         ]);
     }
     else {
-        $countResult = $conn->query("SELECT COUNT(*) AS total FROM par");
+        $countResult = $conn->query("SELECT COUNT(*) AS total, COUNT(DISTINCT parNo) AS parCounts FROM par");
         $countRow = $countResult->fetch_assoc();
         $propertyCount = $countRow['total'] + 1;
+        $parCount = $countRow['parCounts'] + 1;
 
-        $countResult = $conn->query("SELECT COUNT(*) AS total FROM ics");
+        $countResult = $conn->query("SELECT COUNT(*) AS total, COUNT(DISTINCT icsNo) AS icsCounts FROM ics");
         $countRow = $countResult->fetch_assoc();
         $inventoryCount = $countRow['total'] + 1;
+        $icsCount = $countRow['icsCounts'] + 1;
 
         $insertedAirItems = [];
+        $insertedParGroups = [];
+        $insertedIcsGroups = [];
 
         $currentYear = date("Y");
 
@@ -125,8 +153,8 @@ try {
 
             if (!isset($insertedAirItems[$key])) {
                 // Insert this unique AIR info
-                $stmt = $conn->prepare("INSERT INTO air_items (air_no, air_date, fund) VALUES (?, ?, ?)");
-                $stmt->bind_param("sss", $item['airNo'], $item['airDate'], $item['fund']);
+                $stmt = $conn->prepare("INSERT INTO air_items (air_no, air_date, fund, enduser_id) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("sssi", $item['airNo'], $item['airDate'], $item['fund'], $endUserId);
                 $stmt->execute();
 
                 $insertedAirItems[$key] = true;
@@ -134,20 +162,38 @@ try {
         }
 
         foreach ($highValue as $item) {
-            $propertyNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($propertyCount, 4, '0', STR_PAD_LEFT);
+            $groupKey = $item['airNo'] . '|' . $item['airDate'] . '|' . $item['fund'];
 
-            $stmt = $conn->prepare("INSERT INTO par(propertyNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssssd", $propertyNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            if (!isset($insertedParGroups[$groupKey])) {
+                $parNo = $currentYear . ' - ' . str_pad($parCount, 4, '0', STR_PAD_LEFT);
+                $insertedParGroups[$groupKey] = $parNo;
+                $parCount++;
+            }
+            
+            $propertyNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($propertyCount, 4, '0', STR_PAD_LEFT);
+            $parNo = $insertedParGroups[$groupKey];
+
+            $stmt = $conn->prepare("INSERT INTO par(parNo, propertyNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssssd", $parNo, $propertyNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $propertyCount = $propertyCount + 1;
         }
 
         foreach ($lowValue as $item) {
-            $inventoryNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($inventoryCount, 4, '0', STR_PAD_LEFT);
+            $groupKey = $item['airNo'] . '|' . $item['airDate'] . '|' . $item['fund'];
 
-            $stmt = $conn->prepare("INSERT INTO ics(inventoryNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssssd", $inventoryNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            if (!isset($insertedIcsGroups[$groupKey])) {
+                $icsNo = $currentYear . ' - ' . str_pad($icsCount, 4, '0', STR_PAD_LEFT);
+                $insertedIcsGroups[$groupKey] = $icsNo;
+                $icsCount++;
+            }
+
+            $inventoryNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($inventoryCount, 4, '0', STR_PAD_LEFT);
+            $icsNo = $insertedIcsGroups[$groupKey];
+
+            $stmt = $conn->prepare("INSERT INTO ics(icsNo, inventoryNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssssd", $icsNo, $inventoryNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $inventoryCount = $inventoryCount + 1;
