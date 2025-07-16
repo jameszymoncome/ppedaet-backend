@@ -88,6 +88,7 @@ try {
 
         $insertedAirItems = [];
         $insertedIcsGroups = [];
+        $generatedIcsNos = [];
 
         $currentYear = date("Y");
 
@@ -110,6 +111,8 @@ try {
             if (!isset($insertedIcsGroups[$groupKey])) {
                 $icsNo = $currentYear . ' - ' . str_pad($icsCount, 4, '0', STR_PAD_LEFT);
                 $insertedIcsGroups[$groupKey] = $icsNo;
+                $generatedIcsNos[] = $icsNo;
+
                 $icsCount++;
             }
 
@@ -127,7 +130,7 @@ try {
             "success" => true,
             "message" => "Data received",
             "received" => [
-                "inventoryNo" => $inventoryNo
+                "icsNo" => $generatedIcsNos
             ]
         ]);
     }
@@ -145,6 +148,9 @@ try {
         $insertedAirItems = [];
         $insertedParGroups = [];
         $insertedIcsGroups = [];
+        $generatedParNos = [];
+        $generatedIcsNos = [];
+
 
         $currentYear = date("Y");
 
@@ -167,6 +173,7 @@ try {
             if (!isset($insertedParGroups[$groupKey])) {
                 $parNo = $currentYear . ' - ' . str_pad($parCount, 4, '0', STR_PAD_LEFT);
                 $insertedParGroups[$groupKey] = $parNo;
+                $generatedParNos[] = $parNo;
                 $parCount++;
             }
             
@@ -186,6 +193,8 @@ try {
             if (!isset($insertedIcsGroups[$groupKey])) {
                 $icsNo = $currentYear . ' - ' . str_pad($icsCount, 4, '0', STR_PAD_LEFT);
                 $insertedIcsGroups[$groupKey] = $icsNo;
+                $generatedIcsNos[] = $icsNo;
+
                 $icsCount++;
             }
 
@@ -203,8 +212,8 @@ try {
             "success" => true,
             "message" => "Data received",
             "received" => [
-                "parNo" => $highValue,
-                "icsNo" => $lowValue,
+                "parNo" => $generatedParNos,
+                "icsNo" => $generatedIcsNos
             ]
         ]);
 

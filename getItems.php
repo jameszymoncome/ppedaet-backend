@@ -25,13 +25,31 @@ try {
                 users.department,
                 DATE_FORMAT(ai.created_at, '%m-%d-%Y') AS issued_date,
                 COUNT(*) AS item_count,
-                COALESCE(par.status, ics.status) AS status
-                FROM air_items ai
-                LEFT JOIN par ON par.airNo = ai.air_no
-                LEFT JOIN ics ON ics.airNo = ai.air_no
-                LEFT JOIN users ON users.user_id = ai.enduser_id
-                GROUP BY documentNo, types
-                ORDER BY documentNo, types;
+
+                CASE
+                    WHEN SUM(CASE 
+                                WHEN COALESCE(par.status, ics.status) = 'Assigned' THEN 1 
+                                ELSE 0 
+                            END) > 0 THEN 'Assigned'
+                    WHEN SUM(CASE 
+                                WHEN COALESCE(par.status, ics.status) = 'For Tagging' THEN 1 
+                                ELSE 0 
+                            END) > 0 THEN 'For Tagging'
+                    WHEN SUM(CASE 
+                                WHEN COALESCE(par.status, ics.status) = 'Done Tagging' THEN 1 
+                                ELSE 0 
+                            END) = COUNT(*) THEN 'Uploaded Scan'
+                    ELSE MAX(COALESCE(par.status, ics.status))
+                END AS status
+
+            FROM air_items ai
+            LEFT JOIN par ON par.airNo = ai.air_no
+            LEFT JOIN ics ON ics.airNo = ai.air_no
+            LEFT JOIN users ON users.user_id = ai.enduser_id
+            GROUP BY documentNo, types
+            ORDER BY documentNo, types;
+
+
             ";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
