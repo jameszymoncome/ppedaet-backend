@@ -63,6 +63,7 @@ try {
     "userId" => $user['user_id'],
     "department" => $user['department'],
     "position" => $user['position'],
+    "acc_status" => $user['acc_status'],
 ]);
 
 

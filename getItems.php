@@ -38,7 +38,7 @@ try {
                     WHEN SUM(CASE 
                                 WHEN COALESCE(par.status, ics.status) = 'Done Tagging' THEN 1 
                                 ELSE 0 
-                            END) = COUNT(*) THEN 'Uploaded Scan'
+                            END) = COUNT(*) THEN 'Upload Scanned Copy'
                     ELSE MAX(COALESCE(par.status, ics.status))
                 END AS status
 

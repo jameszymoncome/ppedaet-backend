@@ -18,7 +18,7 @@ try {
     // Get database connection
     $conn = getDatabaseConnection();
 
-    $sql = "SELECT CONCAT(firstname, ' ', middlename, ' ', lastname) as fullname, position FROM users WHERE role = 'ADMIN' AND department = 'GSO' AND position = 'DEPARTMENT HEAD'";
+    $sql = "SELECT CONCAT(firstname, ' ', middlename, ' ', lastname) as fullname, position FROM users WHERE role = 'SUPER ADMIN' AND department = 'GSO' AND position = 'DEPARTMENT HEAD'";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $result = $stmt->get_result();
