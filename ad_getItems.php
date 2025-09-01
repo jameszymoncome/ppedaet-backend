@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\Users\James Zymon Come\Documents\my-lgu-proj\backend\getItems.php
+// filepath: c:\Users\James Zymon Come\Documents\my-lgu-proj\backend\ad_getItems.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 header("Content-Type: application/json");
