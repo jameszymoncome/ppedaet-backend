@@ -26,13 +26,14 @@ try {
                     FROM inspectionhistory ih
                     WHERE YEAR(ih.dateInspected) = YEAR(CURDATE())
                 ) AS inspectionCount,
-                DATE_FORMAT(MAX(air_items.created_at), '%M %d, %Y') AS formatted_date
+                (
+                    SELECT DATE_FORMAT(MAX(ih.dateInspected), '%M %d, %Y')
+                    FROM inspectionhistory ih
+                ) AS formatted_date
             FROM air_items
             LEFT JOIN par ON par.airNo = air_items.air_no
             LEFT JOIN ics ON ics.airNo = air_items.air_no
             WHERE COALESCE(par.status, ics.status) = 'Assigned'
-            GROUP BY DATE_FORMAT(created_at, '%M %d, %Y')
-            ORDER BY MAX(created_at) DESC
 
     ";
 

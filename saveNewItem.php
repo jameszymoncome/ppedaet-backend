@@ -64,8 +64,8 @@ try {
             $propertyNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($propertyCount, 4, '0', STR_PAD_LEFT);
             $parNo = $insertedParGroups[$groupKey];
 
-            $stmt = $conn->prepare("INSERT INTO par(parNo, propertyNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssd", $parNo, $propertyNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            $stmt = $conn->prepare("INSERT INTO par(parNo, propertyNo, airNo, articleCode, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssd", $parNo, $propertyNo, $item['airNo'], $item['articleCode'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $propertyCount = $propertyCount + 1;
@@ -119,8 +119,8 @@ try {
             $inventoryNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($inventoryCount, 4, '0', STR_PAD_LEFT);
             $icsNo = $insertedIcsGroups[$groupKey];
 
-            $stmt = $conn->prepare("INSERT INTO ics(icsNo, inventoryNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssd", $icsNo, $inventoryNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            $stmt = $conn->prepare("INSERT INTO ics(icsNo, inventoryNo, airNo, articleCode, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssd", $icsNo, $inventoryNo, $item['airNo'], $item['articleCode'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $inventoryCount = $inventoryCount + 1;
@@ -180,8 +180,8 @@ try {
             $propertyNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($propertyCount, 4, '0', STR_PAD_LEFT);
             $parNo = $insertedParGroups[$groupKey];
 
-            $stmt = $conn->prepare("INSERT INTO par(parNo, propertyNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssd", $parNo, $propertyNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            $stmt = $conn->prepare("INSERT INTO par(parNo, propertyNo, airNo, articleCode, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssd", $parNo, $propertyNo, $item['airNo'], $item['articleCode'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $propertyCount = $propertyCount + 1;
@@ -201,8 +201,8 @@ try {
             $inventoryNo = $currentYear . ' - ' . $item['articleCode'] . ' - ' . str_pad($inventoryCount, 4, '0', STR_PAD_LEFT);
             $icsNo = $insertedIcsGroups[$groupKey];
 
-            $stmt = $conn->prepare("INSERT INTO ics(icsNo, inventoryNo, airNo, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssd", $icsNo, $inventoryNo, $item['airNo'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
+            $stmt = $conn->prepare("INSERT INTO ics(icsNo, inventoryNo, airNo, articleCode, article, description, model, serialNo, unit, unitCost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssd", $icsNo, $inventoryNo, $item['airNo'], $item['articleCode'], $item['article'], $item['description'], $item['model'], $item['serialNo'], $item['unit'], $item['unitCost']);
             $stmt->execute();
 
             $inventoryCount = $inventoryCount + 1;

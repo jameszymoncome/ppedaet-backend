@@ -23,20 +23,30 @@ try {
     $sql = "
         SELECT
             COALESCE(par.propertyNo, ics.inventoryNo) AS docNo,
+            COALESCE(par.propertyNo, ics.inventoryNo) AS itemID,
+            COALESCE(par.tagID, ics.tagID) AS tagID,
             COALESCE(par.description, ics.description) AS description,
             COALESCE(par.model, ics.model) AS model,
             COALESCE(par.serialNo, ics.serialNo) AS serialNo,
+            COALESCE(par.article, ics.article) AS category,
             users.department,
-            IFNULL((
-                SELECT MAX(dateInspected)
-                FROM inspectionhistory
-                WHERE tagID = COALESCE(par.tagID, ics.tagID)
-            ), '') AS dateInspected
-        FROM air_items
-        LEFT JOIN par ON par.airNo = air_items.air_no
-        LEFT JOIN ics ON ics.airNo = air_items.air_no
-        INNER JOIN users ON users.user_id = air_items.enduser_id
-        WHERE COALESCE(par.tagID, ics.tagID) = ?;
+            ih.conditions,
+            ih.remarks,
+            ih.dateInspected
+            FROM air_items
+            LEFT JOIN par ON par.airNo = air_items.air_no
+            LEFT JOIN ics ON ics.airNo = air_items.air_no
+            INNER JOIN users ON users.user_id = air_items.enduser_id
+            LEFT JOIN (
+                SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.dateInspected
+                FROM inspectionhistory ih1
+                INNER JOIN (
+                    SELECT tagID, MAX(dateInspected) AS maxDate
+                    FROM inspectionhistory
+                    GROUP BY tagID
+                ) ih2 ON ih1.tagID = ih2.tagID AND ih1.dateInspected = ih2.maxDate
+            ) ih ON ih.tagID = COALESCE(par.tagID, ics.tagID)
+            WHERE ih.tagID = ?;
     ";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $tag);
