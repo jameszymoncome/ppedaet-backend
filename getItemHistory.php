@@ -32,6 +32,7 @@ try {
             users.department,
             ih.conditions,
             ih.remarks,
+            ih.updates,
             ih.dateInspected
             FROM air_items
             LEFT JOIN par ON par.airNo = air_items.air_no

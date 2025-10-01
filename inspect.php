@@ -33,6 +33,10 @@ try {
         $stmt = $conn->prepare("UPDATE inspectionhistory SET conditions = ?, remarks = ? WHERE tagID = ?");
         $stmt->bind_param("sss", $selectedCondition, $remarks, $nfcTagID);
         $stmt->execute();
+    } else if ($mode === 'report') {
+        $stmt = $conn->prepare("INSERT INTO inspectionhistory (tagID, updates) VALUES (?, ?)");
+        $stmt->bind_param("ss", $nfcTagID, $selectedCondition);
+        $stmt->execute();
     }
 
     echo json_encode([

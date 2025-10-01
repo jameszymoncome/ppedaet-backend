@@ -31,7 +31,8 @@ try {
             LEFT JOIN ics ON ics.airNo = air_items.air_no
             INNER JOIN users ON users.user_id = air_items.enduser_id
             LEFT JOIN inspectionhistory ON inspectionhistory.tagID = COALESCE(par.tagID, ics.tagID)
-            WHERE inspectionhistory.dateInspected IS NOT NULL;
+            WHERE inspectionhistory.dateInspected IS NOT NULL AND inspectionhistory.conditions <> ''
+            ORDER BY dateInspected DESC;
             ";
     $stmt = $conn->prepare($sql);
     $stmt->execute();

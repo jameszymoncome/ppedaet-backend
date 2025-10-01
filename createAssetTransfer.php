@@ -25,7 +25,9 @@ $conn = getDatabaseConnection();
 $conn->begin_transaction();
 
 try {
-    // 1. Insert into asset_transfer
+    /**
+     * 1. Insert into asset_transfer
+     */
     $transferSql = "INSERT INTO asset_transfer (
         ptr_no, entity_name, from_officer, to_officer, transfer_type, reason_for_transfer,
         approved_by, released_by, received_by, transfer_date, status, created_at
@@ -33,17 +35,17 @@ try {
 
     $stmt = $conn->prepare($transferSql);
 
-    $ptr_no             = $data['transferForm']['ptr_no'];
-    $entity_name        = $data['transferForm']['entity_name'];
-    $from_officer       = $data['transferForm']['from_officer'];
-    $to_officer         = $data['transferForm']['to_officer'];
-    $transfer_type      = $data['transferForm']['transfer_type'];
-    $reason_for_transfer= $data['transferForm']['reason_for_transfer'];
-    $approved_by        = $data['transferForm']['approved_by'];
-    $released_by        = $data['transferForm']['released_by'];
-    $received_by        = $data['transferForm']['received_by'];
-    $transfer_date      = $data['transferForm']['transfer_date'];
-    $status             = $data['transferForm']['status'] ?? 'Pending';
+    $ptr_no              = $data['transferForm']['ptr_no'];
+    $entity_name         = $data['transferForm']['entity_name'];
+    $from_officer        = $data['transferForm']['from_officer'];
+    $to_officer          = $data['transferForm']['to_officer'];
+    $transfer_type       = $data['transferForm']['transfer_type'];
+    $reason_for_transfer = $data['transferForm']['reason_for_transfer'];
+    $approved_by         = $data['transferForm']['approved_by'];
+    $released_by         = $data['transferForm']['released_by'];
+    $received_by         = $data['transferForm']['received_by'];
+    $transfer_date       = $data['transferForm']['transfer_date'];
+    $status              = $data['transferForm']['status'] ?? 'Pending';
 
     $stmt->bind_param(
         "sssssssssss",
@@ -63,26 +65,26 @@ try {
     $transferId = $conn->insert_id;
     $stmt->close();
 
-    // 2. Insert items
+    /**
+     * 2. Insert asset_transfer_items
+     */
     $itemSql = "INSERT INTO asset_transfer_items 
         (transfer_id, article, description, propertyNo, unit, quantity, amount, remarks) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE 
             quantity = VALUES(quantity),
             remarks = VALUES(remarks)";
+
     $stmt = $conn->prepare($itemSql);
 
     foreach ($data['assets'] as $asset) {
-        // assign each to variables first
-        $article      = $asset['article'] ?? '';
-        $description  = $asset['description'] ?? '';
-        $property_no   = $asset['propertyNo'] ?? $asset['property_no'] ?? '';
-        $unit         = $asset['unit'] ?? '';
-        $quantity     = (int)($asset['quantity'] ?? 0);
-        $amount       = (float)($asset['unitCost'] ?? 0);
-        $remarks      = $asset['remarks'] ?? '';
-
-        error_log("Asset: " . json_encode($asset)); // Add this line
+        $article     = $asset['article'] ?? '';
+        $description = $asset['description'] ?? '';
+        $property_no = $asset['propertyNo'] ?? $asset['property_no'] ?? '';
+        $unit        = $asset['unit'] ?? '';
+        $quantity    = (int)($asset['quantity'] ?? 0);
+        $amount      = (float)($asset['unitCost'] ?? 0);
+        $remarks     = $asset['remarks'] ?? '';
 
         $stmt->bind_param(
             "issssids",
@@ -97,6 +99,17 @@ try {
         );
         $stmt->execute();
     }
+    $stmt->close();
+
+    /**
+     * 3. Insert notification
+     */
+    $notifSql = "INSERT INTO notifications (type, message, user_id, created_at) 
+                 VALUES ('asset_transfer', ?, 0, NOW())";
+    $stmt = $conn->prepare($notifSql);
+    $message = "Asset transfer PTR No. {$ptr_no} was made.";
+    $stmt->bind_param("s", $message);
+    $stmt->execute();
     $stmt->close();
 
     $conn->commit();

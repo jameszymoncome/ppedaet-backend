@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_FILES['file']) && isset($_POST['docNos'])) {
         $file = $_FILES['file'];
         $docNos = $_POST['docNos'];
+        $docTypes = $_POST['docTypes'];
         $fileName = uniqid() . "_" . basename($file['name']);
         $targetFile = $targetDir . $fileName;
 
@@ -52,16 +53,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conn->begin_transaction();
 
                     // Update ICS table
-                    $stmt1 = $conn->prepare("UPDATE ics SET status = 'Assigned' WHERE airNo = ?");
-                    $stmt1->bind_param("s", $docNos);
+                    $stmt1 = $conn->prepare("UPDATE ics SET status = 'Assigned' WHERE airNo = ? AND type = ?");
+                    $stmt1->bind_param("ss", $docNos, $docTypes);
                     $stmt1->execute();
                     $affected1 = $stmt1->affected_rows;
                     $error1 = $stmt1->error;
                     $stmt1->close();
 
                     // Update PAR table
-                    $stmt2 = $conn->prepare("UPDATE par SET status = 'Assigned' WHERE airNo = ?");
-                    $stmt2->bind_param("s", $docNos);
+                    $stmt2 = $conn->prepare("UPDATE par SET status = 'Assigned' WHERE airNo = ? AND type = ?");
+                    $stmt2->bind_param("ss", $docNos, $docTypes);
                     $stmt2->execute();
                     $affected2 = $stmt2->affected_rows;
                     $error2 = $stmt2->error;

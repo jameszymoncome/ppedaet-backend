@@ -32,13 +32,14 @@ try {
             users.department,
             ih.conditions,
             ih.remarks,
+            ih.updates,
             ih.dateInspected
             FROM air_items
             LEFT JOIN par ON par.airNo = air_items.air_no
             LEFT JOIN ics ON ics.airNo = air_items.air_no
             INNER JOIN users ON users.user_id = air_items.enduser_id
             LEFT JOIN (
-                SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.dateInspected
+                SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.updates, ih1.dateInspected
                 FROM inspectionhistory ih1
                 INNER JOIN (
                     SELECT tagID, MAX(dateInspected) AS maxDate
@@ -46,7 +47,7 @@ try {
                     GROUP BY tagID
                 ) ih2 ON ih1.tagID = ih2.tagID AND ih1.dateInspected = ih2.maxDate
             ) ih ON ih.tagID = COALESCE(par.tagID, ics.tagID)
-            WHERE ih.tagID = ?;
+            WHERE COALESCE(par.tagID, ics.tagID) = ?;
     ";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $tag);

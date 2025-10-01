@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
+$dept_id = trim($data['dept_id'] ?? '');
 $name = trim($data['name'] ?? '');
 $address = trim($data['address'] ?? '');
 
@@ -26,8 +27,8 @@ if (empty($name) || empty($address)) {
 
 try {
     $conn = getDatabaseConnection();
-    $stmt = $conn->prepare("INSERT INTO departmenttbl (entity_name, dept_address) VALUES (?, ?)");
-    $stmt->bind_param("ss", $name, $address);
+    $stmt = $conn->prepare("INSERT INTO departmenttbl (dept_id, entity_name, dept_address) VALUES (?, ?, ?)");
+    $stmt->bind_param("sss", $dept_id, $name, $address);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true, 'message' => 'Department added successfully.']);

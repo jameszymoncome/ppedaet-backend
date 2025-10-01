@@ -35,19 +35,19 @@ $department    = $data['department'] ?? '';
 $position      = $data['position'] ?? '';
 $created_at    = date('Y-m-d H:i:s');
 
-// Insert user into database
-$sql = "INSERT INTO users 
+// --- 1. Insert user ---
+$userSql = "INSERT INTO users 
     (lastname, firstname, middlename, suffix, email, contactNumber, username, password, department, position, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-$stmt = $conn->prepare($sql);
+$userStmt = $conn->prepare($userSql);
 
-if (!$stmt) {
+if (!$userStmt) {
     echo json_encode(["success" => false, "message" => "Prepare failed: " . $conn->error]);
     exit;
 }
 
-$stmt->bind_param(
+$userStmt->bind_param(
     "sssssssssss",
     $lastname,
     $firstname,
@@ -62,16 +62,20 @@ $stmt->bind_param(
     $created_at
 );
 
-    // $notif_sql = "INSERT INTO notifications (user_id, message, type) VALUES (?, ?, ?)";
-    // $notif_stmt = $conn->prepare($notif_sql);
-    // $message = $firstname . " " . $lastname . " has signed up.";
-    // $type = "signup";
-    // $notif_stmt->bind_param("iss", $user_id, $message, $type);
-    // $notif_stmt->execute();
-    // $notif_stmt->close();
+if ($userStmt->execute()) {
+    $user_id = $conn->insert_id;
+    $userStmt->close();
 
-if ($stmt->execute()) {
-    // Optional: Notify WebSocket server on successful signup
+    // --- 2. Insert notification ---
+    $notifSql = "INSERT INTO notifications (type, message, user_id, created_at) 
+                 VALUES ('signup', ?, 0, NOW())";
+    $notifStmt = $conn->prepare($notifSql);
+    $message = "New signup: {$firstname} {$lastname}";
+    $notifStmt->bind_param("s", $message);
+    $notifStmt->execute();
+    $notifStmt->close();
+
+    // --- 3. Optional: Notify WebSocket server ---
     $fullName = $firstname . ' ' . $lastname;
     $notifyData = [
         'fullName'   => $fullName,
@@ -89,11 +93,11 @@ if ($stmt->execute()) {
     $context  = stream_context_create($options);
     @file_get_contents('http://localhost:8081/notify-signup', false, $context);
 
-    echo json_encode(["success" => true]);
+    echo json_encode(["success" => true, "message" => "Signup successful"]);
 } else {
-    echo json_encode(["success" => false, "message" => "Execute failed: " . $stmt->error]);
+    echo json_encode(["success" => false, "message" => "Execute failed: " . $userStmt->error]);
+    $userStmt->close();
 }
 
-$stmt->close();
 $conn->close();
 ?>

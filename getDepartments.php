@@ -19,7 +19,7 @@ try {
     // Get the database connection
     $conn = getDatabaseConnection();
 
-    $query = "SELECT `entity_id`, `entity_name`, `dept_address`, `status` FROM `departmenttbl`";
+    $query = "SELECT `dept_id`, `entity_name`, `dept_address`, `status` FROM `departmenttbl`";
     $result = $conn->query($query);
 
     if (!$result) {
@@ -30,7 +30,7 @@ try {
     $departments = [];
     while ($row = $result->fetch_assoc()) {
         $departments[] = [
-            "id" => $row["entity_id"],
+            "id" => $row["dept_id"],
             "name" => $row["entity_name"],
             "address" => $row["dept_address"],
             "status" => $row["status"],

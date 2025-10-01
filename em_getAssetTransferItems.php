@@ -14,7 +14,7 @@ if (!$user_id) {
 }
 
 $sql = "
-SELECT at.quantity, at.unit, a.from_officer AS from_officer, at.description, at.propertyNo, at.amount, at.remarks
+SELECT at.quantity, at.unit, a.from_officer AS from_officerID, a.from_officer AS from_officer, at.description, at.propertyNo, at.amount, at.remarks
 FROM asset_transfer_items AS at 
 LEFT JOIN asset_transfer AS a ON a.id = at.transfer_id
 LEFT JOIN par AS p ON p.propertyNo = at.propertyNo

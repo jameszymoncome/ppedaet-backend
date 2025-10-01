@@ -22,18 +22,32 @@ try {
     $types = $_GET['types'] ?? '';
 
     // Query the database for the user
-    $sql = "SELECT
-                COALESCE(par.propertyNo, ics.inventoryNo) AS itemNo,
-                COALESCE(par.description, ics.description) AS description,
-                COALESCE(par.model, ics.model) AS model,
-                COALESCE(par.serialNo, ics.serialNo) AS serialNo,
-                COALESCE(par.tagID, ics.tagID) AS nfcID
-            FROM air_items ai
-            LEFT JOIN par ON par.airNo = ai.air_no
-            LEFT JOIN ics ON ics.airNo = ai.air_no
-            LEFT JOIN users ON users.user_id = ai.enduser_id
-            WHERE COALESCE(par.parNo, ics.icsNo) = ?
-            AND COALESCE(par.type, ics.type) = ?";
+    $sql = "";
+    if ($types === 'PAR') {
+        $sql = "SELECT
+            par.propertyNo AS itemNo,
+            par.description AS description,
+            par.model AS model,
+            par.serialNo AS serialNo,
+            par.tagID AS nfcID
+        FROM air_items ai
+        JOIN par ON par.airNo = ai.air_no
+        JOIN users ON users.user_id = ai.enduser_id
+        WHERE par.parNo = ? AND par.type = ?";
+
+    } 
+    if ($types === 'ICS') {
+        $sql = "SELECT
+            ics.inventoryNo AS itemNo,
+            ics.description AS description,
+            ics.model AS model,
+            ics.serialNo AS serialNo,
+            ics.tagID AS nfcID
+        FROM air_items ai
+        JOIN ics ON ics.airNo = ai.air_no
+        JOIN users ON users.user_id = ai.enduser_id
+        WHERE ics.icsNo = ? AND ics.type = ?";
+    }
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $docNo, $types);
