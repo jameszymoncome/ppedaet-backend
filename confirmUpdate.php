@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\Users\James Zymon Come\Documents\my-lgu-proj\backend\getItemTag.php
+// filepath: c:\Users\James Zymon Come\Documents\my-lgu-proj\backend\confirmUpdate.php
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);

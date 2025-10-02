@@ -19,22 +19,9 @@ try {
     $conn = getDatabaseConnection();
 
     $sql = "SELECT 
-                COUNT(*) AS totalTag,
-                SUM(CASE WHEN air_items.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) THEN 1 ELSE 0 END) AS sinceLastYear,
-                (
-                    SELECT COUNT(DISTINCT ih.tagID)
-                    FROM inspectionhistory ih
-                    WHERE YEAR(ih.dateInspected) = YEAR(CURDATE())
-                ) AS inspectionCount,
-                (
-                    SELECT DATE_FORMAT(MAX(ih.dateInspected), '%M %d, %Y')
-                    FROM inspectionhistory ih
-                ) AS formatted_date
-            FROM air_items
-            LEFT JOIN par ON par.airNo = air_items.air_no
-            LEFT JOIN ics ON ics.airNo = air_items.air_no
-            WHERE COALESCE(par.status, ics.status) = 'Assigned'
-
+                COUNT(DISTINCT CONCAT(ih.tagID, '-', YEAR(ih.dateInspected))) AS inspectionCount,
+                DATE_FORMAT(MAX(ih.dateInspected), '%M %d, %Y') AS formatted_date
+            FROM inspectionhistory ih;
     ";
 
     $stmt = $conn->prepare($sql);
@@ -44,8 +31,6 @@ try {
     if ($row = $result->fetch_assoc()) {
         echo json_encode([
             "tagItems" => [
-                "totalTag" => $row['totalTag'],
-                "sinceLastYear" => $row['sinceLastYear'],
                 "inspectionCount" => $row['inspectionCount'],
                 "formatted_date" => $row['formatted_date']
             ]

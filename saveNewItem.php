@@ -75,7 +75,7 @@ try {
             $assetsStmt = $conn->prepare($assetsSql);
             $docType = "PAR";
             $inspection_status = "Good";
-            $status = "Assigned";
+            $status = "Pending";
             $assetsStmt->bind_param(
                 "sssssssisss",
                 $propertyNo,                // item_no
@@ -146,7 +146,7 @@ try {
             $assetsStmt = $conn->prepare($assetsSql);
             $docType = "ICS";
             $inspection_status = "Good";
-            $status = "Assigned";
+            $status = "Pending";
             $assetsStmt->bind_param(
                 "sssssssisss",
                 $inventoryNo,

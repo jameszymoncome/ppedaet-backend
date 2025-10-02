@@ -23,7 +23,7 @@ try {
 
 
     // Query the database for the user
-    $sql = "SELECT categoryID, categoryName FROM categorycode WHERE categoryID LIKE ? OR categoryName LIKE ? LIMIT 5";
+    $sql = "SELECT categoryID, categoryName, usefulness FROM categorycode WHERE categoryID LIKE ? OR categoryName LIKE ? LIMIT 5";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $searchTerm, $searchTerm);
     $stmt->execute();

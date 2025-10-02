@@ -1,10 +1,11 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-header("Content-Type: application/json");
+
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
@@ -15,11 +16,10 @@ require_once 'fpdf.php';
 
 $conn = getDatabaseConnection();
 
-
 if (isset($_GET['air_no'])) {
     $airNo = $_GET['air_no'];
 
-    // Get all file paths with this airNo
+    // ✅ Fetch file paths from DB
     $stmt = $conn->prepare("SELECT filePath FROM files WHERE airNo = ?");
     $stmt->bind_param("s", $airNo);
     $stmt->execute();
@@ -39,16 +39,15 @@ if (isset($_GET['air_no'])) {
         exit;
     }
 
-    // Check if all are images
+    // ✅ Check if all files are images
     $allImages = array_filter($filePaths, function ($filePath) {
         $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
         return in_array($ext, ['jpg', 'jpeg', 'png', 'gif']);
     });
 
-    // If all are images → create a PDF with one image per page
     if (count($allImages) === count($filePaths)) {
+        // ✅ Create PDF with all images
         $pdf = new FPDF('P', 'mm', 'A4');
-
         foreach ($filePaths as $filePath) {
             if (!file_exists($filePath)) continue;
 
@@ -62,7 +61,6 @@ if (isset($_GET['air_no'])) {
 
             $newWidth = $imgWidthMm * $scale;
             $newHeight = $imgHeightMm * $scale;
-
             $x = ($a4Width - $newWidth) / 2;
             $y = ($a4Height - $newHeight) / 2;
 
@@ -76,7 +74,7 @@ if (isset($_GET['air_no'])) {
         exit;
     }
 
-    // If only one file and it's a PDF or DOCX → return original file
+    // ✅ If only one file and it's PDF or DOCX → return directly
     if (count($filePaths) === 1) {
         $filePath = $filePaths[0];
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
@@ -101,8 +99,31 @@ if (isset($_GET['air_no'])) {
         }
     }
 
+    // ✅ If mixed file types → create a ZIP
+    if (count($filePaths) > 1) {
+        $zipFile = tempnam(sys_get_temp_dir(), 'zip');
+        $zip = new ZipArchive();
+        $zip->open($zipFile, ZipArchive::CREATE);
+
+        foreach ($filePaths as $filePath) {
+            if (file_exists($filePath)) {
+                $zip->addFile($filePath, basename($filePath));
+            }
+        }
+
+        $zip->close();
+
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $airNo . '_files.zip"');
+        header('Content-Length: ' . filesize($zipFile));
+        readfile($zipFile);
+        unlink($zipFile);
+        exit;
+    }
+
+    // ❌ Fallback (should not hit here)
     http_response_code(415);
-    echo json_encode(["error" => "Unsupported or mixed file types."]);
+    echo json_encode(["error" => "Unsupported or unknown file types."]);
     exit;
 } else {
     http_response_code(400);
