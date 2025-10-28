@@ -17,7 +17,8 @@ require_once 'db_connection.php';
 
 try {
     // Get the database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     // Read JSON input
     $data = json_decode(file_get_contents("php://input"), true);

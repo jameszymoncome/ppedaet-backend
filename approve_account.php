@@ -12,7 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$conn = getDatabaseConnection(); // Get connection using your db_connection.php class
+$database = new Database();
+$conn = $database->conn; // Get connection using your db_connection.php class
 
 $data = json_decode(file_get_contents("php://input"), true);
 $userId = $data['user_id'] ?? null;

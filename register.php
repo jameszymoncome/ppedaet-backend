@@ -12,7 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'db_connection.php';
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 
 // Check connection
 if ($conn->connect_error) {

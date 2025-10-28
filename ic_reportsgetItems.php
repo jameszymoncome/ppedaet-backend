@@ -15,7 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $userId = isset($_GET['userId']) ? trim($_GET['userId']) : '';
 

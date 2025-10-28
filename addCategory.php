@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
     $input = json_decode(file_get_contents('php://input'), true);
 
     // Validate required fields

@@ -13,7 +13,8 @@ require_once 'db_connection.php';
 
 $exclude_id = isset($_GET['exclude_id']) ? intval($_GET['exclude_id']) : 0;
 
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 
 $sql = "SELECT user_id, firstname, lastname, department FROM users WHERE user_id != ?";
 $stmt = $conn->prepare($sql);

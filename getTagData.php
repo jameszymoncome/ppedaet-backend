@@ -16,15 +16,52 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
-    $sql = "SELECT 
-                COUNT(DISTINCT CONCAT(ih.tagID, '-', YEAR(ih.dateInspected))) AS inspectionCount,
-                DATE_FORMAT(MAX(ih.dateInspected), '%M %d, %Y') AS formatted_date
-            FROM inspectionhistory ih;
-    ";
+    $role = $_GET['role'] ?? '';
+    $usersID = $_GET['usersID'] ?? '';
+    $departments = $_GET['departments'] ?? '';
+
+    $sql = "SELECT
+                COUNT(DISTINCT CONCAT(tagID, '-', YEAR(dateInspected))) AS inspectionCount,
+                DATE_FORMAT(MAX(dateInspected), '%M %d, %Y') AS formatted_date
+            FROM (
+                SELECT ih.tagID, ih.dateInspected
+                FROM air_items
+                LEFT JOIN par ON par.airNo = air_items.air_no
+                LEFT JOIN inspectionhistory ih ON ih.tagID = par.tagID
+                INNER JOIN users ON users.user_id = air_items.enduser_id";
+    
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
+
+    $sql .= " UNION ALL
+
+                SELECT ih.tagID, ih.dateInspected
+                FROM air_items
+                LEFT JOIN ics ON ics.airNo = air_items.air_no
+                LEFT JOIN inspectionhistory ih ON ih.tagID = ics.tagID
+                INNER JOIN users ON users.user_id = air_items.enduser_id";
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
+
+    $sql .= " ) AS combined;";
 
     $stmt = $conn->prepare($sql);
+
+    if ($role === 'EMPLOYEE') {
+        $stmt->bind_param("ii", $usersID, $usersID);
+    } elseif ($role === 'ADMIN') {
+        $stmt->bind_param("ss", $departments, $departments);
+    }
+
     $stmt->execute();
     $result = $stmt->get_result();
 

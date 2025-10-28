@@ -16,68 +16,71 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $tag = $_GET['tag'] ?? '';
 
     $sql = "
         SELECT
-    par.propertyNo AS docNo,
-    par.propertyNo AS itemID,
-    par.tagID AS tagID,
-    par.description AS description,
-    par.model AS model,
-    par.serialNo AS serialNo,
-    par.article AS category,
-    users.department,
-    ih.conditions,
-    ih.remarks,
-    ih.updates,
-    ih.dateInspected,
-    'PAR' AS sourceType
-FROM air_items
-JOIN par ON par.airNo = air_items.air_no
-INNER JOIN users ON users.user_id = air_items.enduser_id
-LEFT JOIN (
-    SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.updates, ih1.dateInspected
-    FROM inspectionhistory ih1
-    INNER JOIN (
-        SELECT tagID, MAX(dateInspected) AS maxDate
-        FROM inspectionhistory
-        GROUP BY tagID
-    ) ih2 ON ih1.tagID = ih2.tagID AND ih1.dateInspected = ih2.maxDate
-) ih ON ih.tagID = par.tagID
-WHERE par.tagID = ? AND ih.conditions != 'Scrap Condition'
+            par.propertyNo AS docNo,
+            par.propertyNo AS itemID,
+            par.tagID AS tagID,
+            par.description AS description,
+            par.model AS model,
+            par.serialNo AS serialNo,
+            par.article AS category,
+            users.department,
+            CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) AS assignedTo,
+            ih.conditions,
+            ih.remarks,
+            ih.updates,
+            ih.dateInspected,
+            'PAR' AS sourceType
+        FROM air_items
+        JOIN par ON par.airNo = air_items.air_no
+        INNER JOIN users ON users.user_id = air_items.enduser_id
+        LEFT JOIN (
+            SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.updates, ih1.dateInspected
+            FROM inspectionhistory ih1
+            INNER JOIN (
+                SELECT tagID, MAX(dateInspected) AS maxDate
+                FROM inspectionhistory
+                GROUP BY tagID
+            ) ih2 ON ih1.tagID = ih2.tagID AND ih1.dateInspected = ih2.maxDate
+        ) ih ON ih.tagID = par.tagID
+        WHERE par.tagID = ? AND (ih.conditions IS NULL OR ih.conditions != 'Scrap Condition') AND par.status = 'Assigned'
 
-UNION ALL
+        UNION ALL
 
-SELECT
-    ics.inventoryNo AS docNo,
-    ics.inventoryNo AS itemID,
-    ics.tagID AS tagID,
-    ics.description AS description,
-    ics.model AS model,
-    ics.serialNo AS serialNo,
-    ics.article AS category,
-    users.department,
-    ih.conditions,
-    ih.remarks,
-    ih.updates,
-    ih.dateInspected,
-    'ICS' AS sourceType
-FROM air_items
-JOIN ics ON ics.airNo = air_items.air_no
-INNER JOIN users ON users.user_id = air_items.enduser_id
-LEFT JOIN (
-    SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.updates, ih1.dateInspected
-    FROM inspectionhistory ih1
-    INNER JOIN (
-        SELECT tagID, MAX(dateInspected) AS maxDate
-        FROM inspectionhistory
-        GROUP BY tagID
-    ) ih2 ON ih1.tagID = ih2.tagID AND ih1.dateInspected = ih2.maxDate
-) ih ON ih.tagID = ics.tagID
-WHERE ics.tagID = ? AND ih.conditions != 'Scrap Condition';
+        SELECT
+            ics.inventoryNo AS docNo,
+            ics.inventoryNo AS itemID,
+            ics.tagID AS tagID,
+            ics.description AS description,
+            ics.model AS model,
+            ics.serialNo AS serialNo,
+            ics.article AS category,
+            users.department,
+            CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) AS assignedTo,
+            ih.conditions,
+            ih.remarks,
+            ih.updates,
+            ih.dateInspected,
+            'ICS' AS sourceType
+        FROM air_items
+        JOIN ics ON ics.airNo = air_items.air_no
+        INNER JOIN users ON users.user_id = air_items.enduser_id
+        LEFT JOIN (
+            SELECT ih1.tagID, ih1.conditions, ih1.remarks, ih1.updates, ih1.dateInspected
+            FROM inspectionhistory ih1
+            INNER JOIN (
+                SELECT tagID, MAX(dateInspected) AS maxDate
+                FROM inspectionhistory
+                GROUP BY tagID
+            ) ih2 ON ih1.tagID = ih2.tagID AND ih1.dateInspected = ih2.maxDate
+        ) ih ON ih.tagID = ics.tagID
+        WHERE ics.tagID = ? AND (ih.conditions IS NULL OR ih.conditions != 'Scrap Condition') AND ics.status = 'Assigned'
 
     ";
     $stmt = $conn->prepare($sql);

@@ -16,7 +16,8 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $docNo = $_GET['docNo'] ?? '';
     $types = $_GET['types'] ?? '';
@@ -25,11 +26,18 @@ try {
     $sql = "";
     if ($types === 'PAR') {
         $sql = "SELECT
+            ai.air_no,
             par.propertyNo AS itemNo,
             par.description AS description,
             par.model AS model,
             par.serialNo AS serialNo,
-            par.tagID AS nfcID
+            par.tagID AS nfcID,
+            par.status,
+            par.downloadedForm,
+            par.type,
+            users.department,
+            users.user_id,
+            DATE(ai.created_at) AS dateAcquired
         FROM air_items ai
         JOIN par ON par.airNo = ai.air_no
         JOIN users ON users.user_id = ai.enduser_id
@@ -38,11 +46,18 @@ try {
     } 
     if ($types === 'ICS') {
         $sql = "SELECT
+            ai.air_no,
             ics.inventoryNo AS itemNo,
             ics.description AS description,
             ics.model AS model,
             ics.serialNo AS serialNo,
-            ics.tagID AS nfcID
+            ics.tagID AS nfcID,
+            ics.status,
+            ics.downloadedForm,
+            ics.type,
+            users.department,
+            users.user_id,
+            DATE(ai.created_at) AS dateAcquired
         FROM air_items ai
         JOIN ics ON ics.airNo = ai.air_no
         JOIN users ON users.user_id = ai.enduser_id

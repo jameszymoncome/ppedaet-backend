@@ -14,26 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
-    // $sql = "SELECT
-    //             COALESCE(par.tagID, ics.tagID) AS tagID,
-    //             COALESCE(par.propertyNo, ics.inventoryNo) AS docNo,
-    //             COALESCE(par.description, ics.description) AS description,
-    //             COALESCE(par.model, ics.model) AS model,
-    //             COALESCE(par.serialNo, ics.serialNo) AS serialNo,
-    //             users.department,
-    //             inspectionhistory.dateInspected AS dateInspected,
-    //             inspectionhistory.conditions,
-    //             inspectionhistory.remarks
-    //         FROM air_items
-    //         LEFT JOIN par ON par.airNo = air_items.air_no
-    //         LEFT JOIN ics ON ics.airNo = air_items.air_no
-    //         INNER JOIN users ON users.user_id = air_items.enduser_id
-    //         LEFT JOIN inspectionhistory ON inspectionhistory.tagID = COALESCE(par.tagID, ics.tagID)
-    //         WHERE inspectionhistory.dateInspected IS NOT NULL AND inspectionhistory.conditions <> ''
-    //         ORDER BY dateInspected DESC;
-    //         ";
+    $role = $_GET['role'] ?? '';
+    $usersID = $_GET['usersID'] ?? '';
+    $departments = $_GET['departments'] ?? '';
+
     $sql = "SELECT
                 par.tagID AS tagID,
                 par.propertyNo AS docNo,
@@ -41,7 +28,8 @@ try {
                 par.model AS model,
                 par.serialNo AS serialNo,
                 users.department,
-                inspectionhistory.dateInspected AS dateInspected,
+                CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) AS assignedTo,
+                Date(inspectionhistory.dateInspected) AS dateInspected,
                 inspectionhistory.conditions,
                 inspectionhistory.remarks
             FROM air_items
@@ -50,9 +38,15 @@ try {
             LEFT JOIN inspectionhistory ON inspectionhistory.tagID = par.tagID
             WHERE inspectionhistory.dateInspected IS NOT NULL 
             AND inspectionhistory.conditions <> '' 
-            AND par.status != 'Disposed'
+            AND YEAR(inspectionhistory.dateInspected) = YEAR(CURDATE()) ";
+    
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
 
-            UNION ALL
+    $sql .= " UNION ALL
 
             SELECT
                 ics.tagID AS tagID,
@@ -61,7 +55,8 @@ try {
                 ics.model AS model,
                 ics.serialNo AS serialNo,
                 users.department,
-                inspectionhistory.dateInspected AS dateInspected,
+                CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) AS assignedTo,
+                DATE(inspectionhistory.dateInspected) AS dateInspected,
                 inspectionhistory.conditions,
                 inspectionhistory.remarks
             FROM air_items
@@ -70,12 +65,23 @@ try {
             LEFT JOIN inspectionhistory ON inspectionhistory.tagID = ics.tagID
             WHERE inspectionhistory.dateInspected IS NOT NULL 
             AND inspectionhistory.conditions <> '' 
-            AND ics.status != 'Disposed'
+            AND YEAR(inspectionhistory.dateInspected) = YEAR(CURDATE())";
+    
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
 
-            ORDER BY dateInspected DESC;
+    $sql .= " ORDER BY dateInspected DESC;
 
             ";
     $stmt = $conn->prepare($sql);
+    if ($role === 'EMPLOYEE') {
+        $stmt->bind_param("ii", $usersID, $usersID);
+    } elseif ($role === 'ADMIN') {
+        $stmt->bind_param("ss", $departments, $departments);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -92,6 +98,7 @@ try {
             "model" => $row['model'],
             "serialNo" => $row['serialNo'],
             "department" => $row['department'],
+            "assignedTo" => $row['assignedTo'],
             "dateInspected" => $row['dateInspected'],
             "conditions" => $row['conditions'],
             "remarks" => $row['remarks']

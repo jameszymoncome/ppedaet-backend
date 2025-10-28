@@ -16,7 +16,12 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
+
+    $role = $_GET['role'] ?? '';
+    $usersID = $_GET['usersID'] ?? '';
+    $departments = $_GET['departments'] ?? '';
 
     $sql = "SELECT
                 par.tagID,
@@ -34,9 +39,15 @@ try {
             JOIN par ON par.airNo = air_items.air_no
             JOIN inspectionhistory ih ON ih.tagID = par.tagID
             JOIN users ON users.user_id = air_items.enduser_id
-            WHERE ih.conditions = 'Scrap Condition' AND par.status = 'Disposed'
+            WHERE ih.conditions = 'Scrap Condition' AND par.status = 'Disposed'";
+    
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
 
-            UNION ALL
+    $sql .= " UNION ALL
 
             SELECT
                 ics.tagID,
@@ -54,11 +65,22 @@ try {
             JOIN ics ON ics.airNo = air_items.air_no
             JOIN inspectionhistory ih ON ih.tagID = ics.tagID
             JOIN users ON users.user_id = air_items.enduser_id
-            WHERE ih.conditions = 'Scrap Condition' AND ics.status = 'Disposed';
+            WHERE ih.conditions = 'Scrap Condition' AND ics.status = 'Disposed'";
 
-    ";
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
 
     $stmt = $conn->prepare($sql);
+
+    if ($role === 'EMPLOYEE') {
+        $stmt->bind_param("ii", $usersID, $usersID);
+    } elseif ($role === 'ADMIN') {
+        $stmt->bind_param("ss", $departments, $departments);
+    }
+    
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -71,7 +93,8 @@ try {
                 "description" => $row["description"],
                 "model" => $row["model"],
                 "serialNo" => $row["serialNo"],
-                "acquisitionDate" => $row["acquisitionDate"],
+                "acquisitionDate" => $row["acquisition
+nDate"],
                 "cost" => $row["cost"],
                 "fund" => $row["fund"],
                 "dateScrapped" => $row["scrapDate"],

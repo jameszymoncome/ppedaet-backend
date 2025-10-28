@@ -18,7 +18,8 @@ require_once 'db_connection.php';
 
 try {
     // Get DB connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     // Query all users
     $sql = "

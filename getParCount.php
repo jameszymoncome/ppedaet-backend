@@ -16,7 +16,8 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $sql = "SELECT COUNT(*) AS parCount FROM par";
     $stmt = $conn->prepare($sql);

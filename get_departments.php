@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $query = "SELECT * FROM `departmenttbl`";
     $result = $conn->query($query);

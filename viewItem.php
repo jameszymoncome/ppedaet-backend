@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $airNo = $_GET['air_no'] ?? '';
     $type  = strtolower($_GET['type'] ?? ''); // lowercase for safety

@@ -16,7 +16,12 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
+
+    $role = $_GET['role'] ?? '';
+    $usersID = $_GET['usersID'] ?? '';
+    $departments = $_GET['departments'] ?? '';
 
     $sql = "WITH latest_updates AS (
                 SELECT
@@ -33,6 +38,7 @@ try {
                     par.description,
                     par.model,
                     par.serialNo,
+                    par.type,
                     users.department,
                     ih.updates,
                     ih.dateInspected
@@ -42,19 +48,25 @@ try {
                 JOIN latest_updates lu ON lu.tagID = ih.tagID
                 JOIN users ON users.user_id = air_items.enduser_id
                 WHERE (SELECT updates 
-                    FROM inspectionhistory 
-                    WHERE tagID = ih.tagID AND dateInspected = lu.latestDate) <> 'Repaired'
+                        FROM inspectionhistory 
+                        WHERE tagID = ih.tagID AND dateInspected = lu.latestDate) <> 'Repaired'
                 AND ih.updates <> ''
-                AND par.status <> 'Disposed'
+                AND par.status <> 'Disposed'";
 
-                UNION ALL
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
 
+    $sql .= " UNION ALL
                 SELECT
                     ics.tagID,
                     ics.inventoryNo AS docNo,
                     ics.description,
                     ics.model,
                     ics.serialNo,
+                    ics.type,
                     users.department,
                     ih.updates,
                     ih.dateInspected
@@ -64,27 +76,37 @@ try {
                 JOIN latest_updates lu ON lu.tagID = ih.tagID
                 JOIN users ON users.user_id = air_items.enduser_id
                 WHERE (SELECT updates 
-                    FROM inspectionhistory 
-                    WHERE tagID = ih.tagID AND dateInspected = lu.latestDate) <> 'Repaired'
+                        FROM inspectionhistory 
+                        WHERE tagID = ih.tagID AND dateInspected = lu.latestDate) <> 'Repaired'
                 AND ih.updates <> ''
-                AND ics.status <> 'Disposed'
-            ),
+                AND ics.status <> 'Disposed'";
 
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
+
+    $sql .= "),
             ranked AS (
                 SELECT *,
                     ROW_NUMBER() OVER (PARTITION BY tagID ORDER BY dateInspected DESC) AS rn
                 FROM all_filtered
             )
-
-            SELECT tagID, docNo AS itemNo, description, model, serialNo, department, updates
+            SELECT tagID, docNo AS itemNo, description, model, serialNo, type, department, updates
             FROM ranked
-            WHERE rn = 1;
+            WHERE rn = 1;";
 
-
-
-    ";
-
+    // ✅ Prepare the query
     $stmt = $conn->prepare($sql);
+
+    // ✅ Bind both placeholders (one for each part of the UNION)
+    if ($role === 'EMPLOYEE') {
+        $stmt->bind_param("ii", $usersID, $usersID);
+    } elseif ($role === 'ADMIN') {
+        $stmt->bind_param("ss", $departments, $departments);
+    }
+
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -97,6 +119,7 @@ try {
                 "description" => $row["description"],
                 "model" => $row["model"],
                 "serialNo" => $row["serialNo"],
+                "type" => $row["type"],
                 "department" => $row["department"],
                 "conditions" => $row["updates"]
 

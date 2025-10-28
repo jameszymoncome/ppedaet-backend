@@ -21,17 +21,29 @@ if (!$data || !isset($data['transferForm']) || !isset($data['assets'])) {
     exit;
 }
 
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 $conn->begin_transaction();
 
 try {
+    /**
+     * ✅ Determine type (PAR or ICS)
+     */
+    $totalAmount = 0;
+    foreach ($data['assets'] as $asset) {
+        $amount = (float)($asset['unitCost'] ?? 0);
+        $quantity = (int)($asset['quantity'] ?? 1);
+        $totalAmount += $amount * $quantity;
+    }
+    $type = ($totalAmount >= 50000) ? "PAR" : "ICS";
+
     /**
      * 1. Insert into asset_transfer
      */
     $transferSql = "INSERT INTO asset_transfer (
         ptr_no, entity_name, from_officer, to_officer, transfer_type, reason_for_transfer,
-        approved_by, released_by, received_by, transfer_date, status, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        approved_by, released_by, received_by, transfer_date, status, type, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = $conn->prepare($transferSql);
 
@@ -48,7 +60,7 @@ try {
     $status              = $data['transferForm']['status'] ?? 'Pending';
 
     $stmt->bind_param(
-        "sssssssssss",
+        "ssssssssssss",
         $ptr_no,
         $entity_name,
         $from_officer,
@@ -59,7 +71,8 @@ try {
         $released_by,
         $received_by,
         $transfer_date,
-        $status
+        $status,
+        $type
     );
     $stmt->execute();
     $transferId = $conn->insert_id;
@@ -107,13 +120,13 @@ try {
     $notifSql = "INSERT INTO notifications (type, message, user_id, created_at) 
                  VALUES ('asset_transfer', ?, 0, NOW())";
     $stmt = $conn->prepare($notifSql);
-    $message = "Asset transfer PTR No. {$ptr_no} was made.";
+    $message = "Asset transfer PTR No. {$ptr_no} was made (Type: {$type}).";
     $stmt->bind_param("s", $message);
     $stmt->execute();
     $stmt->close();
 
     $conn->commit();
-    echo json_encode(["success" => true, "message" => "Transfer created successfully"]);
+    echo json_encode(["success" => true, "message" => "Transfer created successfully", "type" => $type]);
 
 } catch (Exception $e) {
     $conn->rollback();
@@ -121,3 +134,4 @@ try {
 }
 
 $conn->close();
+?>

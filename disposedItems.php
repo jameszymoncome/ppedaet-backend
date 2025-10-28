@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     // Read JSON body from React request
     $input = json_decode(file_get_contents("php://input"), true);

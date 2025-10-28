@@ -14,7 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
     
     // Read and decode JSON input
     $input = json_decode(file_get_contents("php://input"), true);
@@ -24,6 +25,7 @@ try {
     $selectedCondition = $input['selectedCondition'] ?? '';
     $remarks = $input['remarks'] ?? '';
     $mode = $input['mode'] ?? '';
+    $conditions = $input['conditions'] ?? '';
 
     if ($mode === 'scan') {
         $stmt = $conn->prepare("INSERT INTO inspectionhistory(tagID, conditions, remarks) VALUES (?, ?, ?)");
@@ -37,11 +39,15 @@ try {
         $stmt = $conn->prepare("INSERT INTO inspectionhistory (tagID, updates) VALUES (?, ?)");
         $stmt->bind_param("ss", $nfcTagID, $selectedCondition);
         $stmt->execute();
+    } else if ($mode === 'reportLost'){
+        $stmt = $conn->prepare("INSERT INTO inspectionhistory (tagID, updates) VALUES (?, ?)");
+        $stmt->bind_param("ss", $nfcTagID, 'Updated Tag');
+        $stmt->execute();
     }
 
     echo json_encode([
         "success" => true,
-        "message" => "Done Inspecting"
+        "message" => $nfcTagID
     ]);
 
 } catch (Exception $e) {

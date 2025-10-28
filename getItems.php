@@ -14,7 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
+
+    $role = $_GET['role'] ?? '';
+    $usersID = $_GET['usersID'] ?? '';
+    $departments = $_GET['departments'] ?? '';
 
     $sql = "SELECT *
             FROM (
@@ -22,6 +27,7 @@ try {
                     ai.id,
                     ai.air_no,
                     par.parNo AS documentNo,
+                    par.tagID,
                     par.type AS types,
                     CONCAT(u.firstname, ' ', u.middlename, ' ', u.lastname) AS endUser,
                     u.department,
@@ -42,18 +48,26 @@ try {
                                 END) = COUNT(*) THEN 'Upload Scanned Copy'
                         ELSE MAX(COALESCE(par.status))
                     END AS status,
+                    par.downloadedForm,
                     ai.created_at
                 FROM air_items ai
                 JOIN par ON par.airNo = ai.air_no
-                JOIN users u ON u.user_id = ai.enduser_id
-                GROUP BY ai.air_no, ai.fund, ai.air_date, documentNo, types
+                JOIN users u ON u.user_id = ai.enduser_id";
 
-                UNION ALL
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND u.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND u.department = ?";
+    }
+
+    $sql .= "   GROUP BY ai.air_no, ai.fund, ai.air_date, documentNo, types
+            UNION ALL
 
                 SELECT
                     ai.id,
                     ai.air_no,
                     ics.icsNo AS documentNo,
+                    ics.tagID,
                     ics.type AS types,
                     CONCAT(u.firstname, ' ', u.middlename, ' ', u.lastname) AS endUser,
                     u.department,
@@ -74,15 +88,28 @@ try {
                                 END) = COUNT(*) THEN 'Upload Scanned Copy'
                         ELSE MAX(COALESCE(ics.status))
                     END AS status,
+                    ics.downloadedForm,
                     ai.created_at
                 FROM air_items ai
                 JOIN ics ON ics.airNo = ai.air_no
-                JOIN users u ON u.user_id = ai.enduser_id
+                JOIN users u ON u.user_id = ai.enduser_id";
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND u.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND u.department = ?";
+    }
+
+    $sql .= " 
                 GROUP BY ai.air_no, ai.fund, ai.air_date, documentNo, types
-            ) AS combined
+                ) AS combined
             ORDER BY combined.created_at DESC;
             ";
     $stmt = $conn->prepare($sql);
+    if ($role === 'EMPLOYEE') {
+        $stmt->bind_param("ii", $usersID, $usersID);
+    } elseif ($role === 'ADMIN') {
+        $stmt->bind_param("ss", $departments, $departments);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -93,13 +120,15 @@ try {
             "id" => $row['id'],
             "air_no" => $row['air_no'],
             "documentNo" => $row['documentNo'],
+            "tagID" => $row['tagID'],
             "type" => $row['types'],
             "user" => trim(preg_replace('/\s+/', ' ', $row['endUser'])), // remove double spaces if middlename is empty
             "office" => $row['department'],
             "dateIssued" => $row['issued_date'],
             "items" => (int)$row['item_count'],
             "status" => $row['status'],
-            "created_at" => $row['created_at']
+            "created_at" => $row['created_at'],
+            "downloadedForm" => $row['downloadedForm']
         ];
     }
 

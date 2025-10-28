@@ -13,7 +13,8 @@ require_once 'db_connection.php';
 
 $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
 
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 
 $sql = "
     SELECT 

@@ -16,7 +16,12 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
+
+    $role = $_GET['role'] ?? '';
+    $usersID = $_GET['usersID'] ?? '';
+    $departments = $_GET['departments'] ?? '';
 
     $sql = "SELECT 
                 SUM(totalTag) AS totalTag,
@@ -28,9 +33,16 @@ try {
                             THEN 1 ELSE 0 END) AS sinceLastYear
                 FROM air_items ai
                 JOIN par ON par.airNo = ai.air_no
-                WHERE par.status = 'Assigned'
+                JOIN users ON users.user_id = ai.enduser_id
+                WHERE par.status = 'Assigned'";
 
-                UNION ALL
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
+
+    $sql .= " UNION ALL
 
                 SELECT 
                     COUNT(*) AS totalTag,
@@ -38,12 +50,23 @@ try {
                             THEN 1 ELSE 0 END) AS sinceLastYear
                 FROM air_items ai
                 JOIN ics ON ics.airNo = ai.air_no
-                WHERE ics.status = 'Assigned'
-            ) AS combined;
+                JOIN users ON users.user_id = ai.enduser_id
+                WHERE ics.status = 'Assigned'";
 
-    ";
+    if ($role === 'EMPLOYEE') {
+        $sql .= " AND users.user_id = ?";
+    } elseif ($role === 'ADMIN') {
+        $sql .= " AND users.department = ?";
+    }
+
+    $sql .= " ) AS combined;";
 
     $stmt = $conn->prepare($sql);
+    if ($role === 'EMPLOYEE') {
+        $stmt->bind_param("ii", $usersID, $usersID);
+    } elseif ($role === 'ADMIN') {
+        $stmt->bind_param("ss", $departments, $departments);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
 

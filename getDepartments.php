@@ -17,7 +17,8 @@ require_once 'db_connection.php';
 
 try {
     // Get the database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $query = "SELECT `dept_id`, `entity_name`, `dept_address`, `status` FROM `departmenttbl`";
     $result = $conn->query($query);

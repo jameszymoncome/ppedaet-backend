@@ -23,7 +23,8 @@ if (!$id) {
 }
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
     $stmt = $conn->prepare("DELETE FROM departmenttbl WHERE entity_id = ?");
     $stmt->bind_param("i", $id);
 

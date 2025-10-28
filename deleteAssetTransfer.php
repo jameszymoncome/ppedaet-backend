@@ -19,7 +19,8 @@ if (!$ptr_no) {
     exit;
 }
 
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 
 // Delete related items first (if you have a linking table)
 $conn->query("DELETE FROM asset_transfer_items WHERE transfer_id IN (SELECT id FROM asset_transfer WHERE ptr_no = '$ptr_no')");

@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\Users\James Zymon Come\Documents\my-lgu-proj\backend\getItemTag.php
+// filepath: c:\Users\James Zymon Come\Documents\my-lgu-proj\backend\getItemHistory.php
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -16,34 +16,58 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $tag = $_GET['tag'] ?? '';
 
-    $sql = "
-        SELECT
-            COALESCE(par.propertyNo, ics.inventoryNo) AS docNo,
-            COALESCE(par.propertyNo, ics.inventoryNo) AS itemID,
-            COALESCE(par.tagID, ics.tagID) AS tagID,
-            COALESCE(par.description, ics.description) AS description,
-            COALESCE(par.model, ics.model) AS model,
-            COALESCE(par.serialNo, ics.serialNo) AS serialNo,
-            COALESCE(par.article, ics.article) AS category,
-            users.department,
-            ih.conditions,
-            ih.remarks,
-            ih.updates,
-            ih.dateInspected
+    $sql = "SELECT
+                par.propertyNo AS docNo,
+                par.propertyNo AS itemID,
+                par.tagID AS tagID,
+                par.description AS description,
+                par.model AS model,
+                par.serialNo AS serialNo,
+                par.article AS category,
+                users.department,
+                ih.conditions,
+                ih.remarks,
+                ih.updates,
+                ih.dateInspected
             FROM air_items
-            LEFT JOIN par ON par.airNo = air_items.air_no
-            LEFT JOIN ics ON ics.airNo = air_items.air_no
+            JOIN par ON par.airNo = air_items.air_no
             INNER JOIN users ON users.user_id = air_items.enduser_id
-            LEFT JOIN inspectionhistory ih ON ih.tagID = COALESCE(par.tagID, ics.tagID)
-            WHERE ih.tagID = ? AND ih.conditions != 'Scrap Condition'
-            ORDER BY ih.dateInspected DESC;
+            LEFT JOIN inspectionhistory ih ON ih.tagID = par.tagID
+            WHERE ih.tagID = ? 
+            AND ih.conditions != 'Scrap Condition'
+
+            UNION ALL
+
+            SELECT
+                ics.inventoryNo AS docNo,
+                ics.inventoryNo AS itemID,
+                ics.tagID AS tagID,
+                ics.description AS description,
+                ics.model AS model,
+                ics.serialNo AS serialNo,
+                ics.article AS category,
+                users.department,
+                ih.conditions,
+                ih.remarks,
+                ih.updates,
+                ih.dateInspected
+            FROM air_items
+            JOIN ics ON ics.airNo = air_items.air_no
+            INNER JOIN users ON users.user_id = air_items.enduser_id
+            LEFT JOIN inspectionhistory ih ON ih.tagID = ics.tagID
+            WHERE ih.tagID = ?
+            AND ih.conditions != 'Scrap Condition'
+
+            ORDER BY dateInspected DESC;
+
     ";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $tag);
+    $stmt->bind_param("ss", $tag, $tag);
     $stmt->execute();
     $result = $stmt->get_result();
 

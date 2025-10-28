@@ -14,7 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $query = "SELECT categoryID AS id, categoryName AS name, 'Active' AS status FROM categorycode ORDER BY categoryID DESC";
     $result = $conn->query($query);

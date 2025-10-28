@@ -26,7 +26,8 @@ if (empty($name) || empty($address)) {
 }
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
     $stmt = $conn->prepare("INSERT INTO departmenttbl (dept_id, entity_name, dept_address) VALUES (?, ?, ?)");
     $stmt->bind_param("sss", $dept_id, $name, $address);
 

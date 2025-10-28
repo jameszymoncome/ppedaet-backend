@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'db_connection.php';
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     // ✅ Only select device_name
     $sql = "SELECT device_name, ip, last_seen, status FROM devices";

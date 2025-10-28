@@ -16,7 +16,8 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $docsNo = $_GET['docsNo'] ?? '';
     $typess = $_GET['typess'] ?? '';
@@ -26,25 +27,51 @@ try {
                 ai.air_no,
                 ai.air_date,
                 ai.fund,
-                COALESCE(par.unit, ics.unit) AS unit,
-                COALESCE(par.article, ics.article) AS article,
-                COALESCE(par.description, ics.description) AS description,
-                COALESCE(par.model, ics.model) AS model,
-                COALESCE(par.serialNo, ics.serialNo) AS serialNo,
-                COALESCE(par.propertyNo, ics.inventoryNo) AS itemNOs,
+                par.parNo AS docsNo,
+                par.unit AS unit,
+                par.article AS article,
+                par.description AS description,
+                par.model AS model,
+                par.serialNo AS serialNo,
+                par.propertyNo AS itemNOs,
                 DATE(ai.created_at) AS dateAcquired,
-                COALESCE(par.unitCost, ics.unitCost) AS unitCost,
-                CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) as enduserName
+                par.unitCost AS unitCost,
+                CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) AS enduserName,
+                categorycode.usefulness
             FROM air_items ai
             LEFT JOIN par ON par.airNo = ai.air_no
+            LEFT JOIN users ON users.user_id = ai.enduser_id
+            LEFT JOIN categorycode ON categorycode.categoryID = par.articleCode
+            WHERE par.parNo = ?
+            AND par.type = ?
+
+            UNION ALL
+
+            SELECT
+                ai.air_no,
+                ai.air_date,
+                ai.fund,
+                ics.icsNo AS docsNo,
+                ics.unit AS unit,
+                ics.article AS article,
+                ics.description AS description,
+                ics.model AS model,
+                ics.serialNo AS serialNo,
+                ics.inventoryNo AS itemNOs,
+                DATE(ai.created_at) AS dateAcquired,
+                ics.unitCost AS unitCost,
+                CONCAT(users.firstname, ' ', users.middlename, ' ', users.lastname) AS enduserName,
+                categorycode.usefulness
+            FROM air_items ai
             LEFT JOIN ics ON ics.airNo = ai.air_no
             LEFT JOIN users ON users.user_id = ai.enduser_id
-            WHERE COALESCE(par.parNo, ics.icsNo) = ?
-            AND COALESCE(par.type, ics.type) = ?;
+            LEFT JOIN categorycode ON categorycode.categoryID = ics.articleCode
+            WHERE ics.icsNo = ?
+            AND ics.type = ?;
             ";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $docsNo, $typess);
+    $stmt->bind_param("ssss", $docsNo, $typess, $docsNo, $typess);
     $stmt->execute();
     $result = $stmt->get_result();
 

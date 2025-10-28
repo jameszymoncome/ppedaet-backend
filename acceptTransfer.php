@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'db_connection.php';
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ptr_no = $_POST['ptr_no'] ?? '';

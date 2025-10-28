@@ -6,7 +6,8 @@ header("Access-Control-Allow-Origin: *");
 
 require_once 'db_connection.php';
 
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 $year = date('Y');
 
 $sql = "SELECT MAX(ptr_no) AS latest_ptr_no FROM asset_transfer WHERE ptr_no LIKE ?";

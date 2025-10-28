@@ -26,7 +26,8 @@ if (!$air_no || !$air_date || !$fund || empty($items)) {
 }
 
 try {
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $sql = "INSERT INTO air_items (air_no, air_date, fund, article, description, unit, total_amount)
             VALUES (?, ?, ?, ?, ?, ?, ?)";

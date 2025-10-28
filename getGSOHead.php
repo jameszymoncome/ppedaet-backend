@@ -16,7 +16,8 @@ require_once 'db_connection.php';
 
 try {
     // Get database connection
-    $conn = getDatabaseConnection();
+    $database = new Database();
+    $conn = $database->conn;
 
     $sql = "SELECT CONCAT(firstname, ' ', middlename, ' ', lastname) as fullname, position FROM users WHERE role = 'SUPER ADMIN' AND department = 'GSO' AND position = 'DEPARTMENT HEAD'";
     $stmt = $conn->prepare($sql);

@@ -4,7 +4,8 @@ header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 require_once 'db_connection.php';
 
-$conn = getDatabaseConnection();
+$database = new Database();
+$conn = $database->conn;
 
 // ✅ Fetch all transfers with optional aggregated items
 $sql = "
