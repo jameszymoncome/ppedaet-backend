@@ -19,40 +19,58 @@ try {
     $database = new Database();
     $conn = $database->conn;
 
+    // ✅ Handle both PAR and ICS records in a UNION for cleaner logic
     $sql = "
         SELECT
             ai.id,
             ai.air_no,
-            COALESCE(par.parNo, ics.icsNo) AS documentNo,
-            COALESCE(par.type, ics.type) AS types,
-            CONCAT(users.firstname, ' ', COALESCE(users.middlename, ''), ' ', users.lastname) AS endUser,
-            users.department,
+            par.parNo AS documentNo,
+            par.type AS types,
+            CONCAT(u.firstname, ' ', COALESCE(u.middlename, ''), ' ', u.lastname) AS endUser,
+            u.department,
             DATE_FORMAT(ai.created_at, '%m-%d-%Y') AS issued_date,
             COUNT(ai.id) AS item_count,
-
             CASE
-                WHEN SUM(CASE 
-                            WHEN COALESCE(par.status, ics.status) = 'Assigned' THEN 1 
-                            ELSE 0 
-                        END) > 0 THEN 'Assigned'
-                WHEN SUM(CASE 
-                            WHEN COALESCE(par.status, ics.status) = 'For Tagging' THEN 1 
-                            ELSE 0 
-                        END) > 0 THEN 'For Tagging'
-                WHEN SUM(CASE 
-                            WHEN COALESCE(par.status, ics.status) = 'Done Tagging' THEN 1 
-                            ELSE 0 
-                        END) = COUNT(ai.id) THEN 'Upload Scanned Copy'
-                ELSE MAX(COALESCE(par.status, ics.status))
+                WHEN SUM(par.status = 'Assigned') > 0 THEN 'Assigned'
+                WHEN SUM(par.status = 'For Tagging') > 0 THEN 'For Tagging'
+                WHEN SUM(par.status = 'Done Tagging') = COUNT(ai.id) THEN 'Upload Scanned Copy'
+                ELSE MAX(par.status)
             END AS status
-
         FROM air_items ai
         LEFT JOIN par ON par.airNo = ai.air_no
-        LEFT JOIN ics ON ics.airNo = ai.air_no
-        LEFT JOIN users ON users.user_id = ai.enduser_id
+        LEFT JOIN users u ON u.user_id = ai.enduser_id
+        WHERE par.parNo IS NOT NULL
+        GROUP BY ai.air_no, documentNo, types, endUser, u.department, issued_date
 
-        GROUP BY ai.air_no, documentNo, types, endUser, users.department, issued_date
-        HAVING status = 'Assigned'
+        UNION ALL
+
+        SELECT
+            ai.id,
+            ai.air_no,
+            ics.icsNo AS documentNo,
+            ics.type AS types,
+            CONCAT(u.firstname, ' ', COALESCE(u.middlename, ''), ' ', u.lastname) AS endUser,
+            u.department,
+            DATE_FORMAT(ai.created_at, '%m-%d-%Y') AS issued_date,
+            COUNT(ai.id) AS item_count,
+            CASE
+                WHEN SUM(ics.status = 'Assigned') > 0 THEN 'Assigned'
+                WHEN SUM(ics.status = 'For Tagging') > 0 THEN 'For Tagging'
+                WHEN SUM(ics.status = 'Done Tagging') = COUNT(ai.id) THEN 'Upload Scanned Copy'
+                ELSE MAX(ics.status)
+            END AS status
+        FROM air_items ai
+        LEFT JOIN ics ON ics.airNo = ai.air_no
+        LEFT JOIN users u ON u.user_id = ai.enduser_id
+        WHERE ics.icsNo IS NOT NULL
+        GROUP BY ai.air_no, documentNo, types, endUser, u.department, issued_date
+    ";
+
+    $sql = "
+        SELECT * FROM (
+            $sql
+        ) AS combined
+        WHERE status = 'Assigned'
         ORDER BY issued_date DESC
     ";
 
@@ -61,14 +79,13 @@ try {
     $result = $stmt->get_result();
 
     $items = [];
-
     while ($row = $result->fetch_assoc()) {
         $items[] = [
             "id" => $row['id'],
             "air_no" => $row['air_no'],
             "documentNo" => $row['documentNo'],
             "type" => $row['types'],
-            "user" => trim(preg_replace('/\s+/', ' ', $row['endUser'])), // clean extra spaces
+            "user" => trim(preg_replace('/\s+/', ' ', $row['endUser'])),
             "office" => $row['department'],
             "dateIssued" => $row['issued_date'],
             "items" => (int)$row['item_count'],
@@ -76,11 +93,11 @@ try {
         ];
     }
 
-    if (!empty($items)) {
-        echo json_encode(["success" => true, "items" => $items]);
-    } else {
-        echo json_encode(["success" => false, "message" => "No 'Assigned' data found"]);
-    }
+    echo json_encode([
+        "success" => !empty($items),
+        "items" => $items,
+        "message" => empty($items) ? "No 'Assigned' data found" : null
+    ]);
 
 } catch (Exception $e) {
     echo json_encode([
@@ -88,3 +105,4 @@ try {
         "message" => "Server error: " . $e->getMessage()
     ]);
 }
+?>
