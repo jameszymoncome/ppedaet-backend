@@ -34,7 +34,7 @@ if (!isset($_FILES['signed_doc']) || $_FILES['signed_doc']['error'] !== UPLOAD_E
     exit;
 }
 
-/* save file */
+/* Save file */
 $uploadDir = 'uploads/signed_docs/';
 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
@@ -46,7 +46,7 @@ if (!move_uploaded_file($_FILES['signed_doc']['tmp_name'], $filePath)) {
     exit;
 }
 
-/* transaction */
+/* Start transaction */
 $conn->begin_transaction();
 
 try {
@@ -57,12 +57,13 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // ✅ 2. Get all assets involved in this transfer
+    // ✅ 2. Fetch all items in this PTR transfer
     $fetchSql = "
         SELECT 
             ati.propertyNo AS item_no,
             atf.type AS asset_type,
             atf.to_officer AS new_owner,
+            atf.from_officer AS prev_owner,
             atf.transfer_date
         FROM asset_transfer_items ati
         JOIN asset_transfer atf ON ati.transfer_id = atf.id
@@ -73,61 +74,36 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
 
+    // ✅ 3. Update each asset instead of inserting new ones
     while ($row = $result->fetch_assoc()) {
         $item_no = $row['item_no'];
-        $asset_type = $row['asset_type'];  // could be PAR, ICS, or PTR
+        $asset_type = $row['asset_type']; // PAR / ICS / PTR
         $new_owner = $row['new_owner'];
+        $prev_owner = $row['prev_owner'];
         $transfer_date = $row['transfer_date'];
 
-        // ✅ 3. If transferring from a PTR, trace back to its original PAR/ICS
-        if ($asset_type === 'PTR') {
-            $traceSql = "
-                SELECT origin_type, origin_user_id
-                FROM assets
-                WHERE item_no = ? AND type = 'PTR'
-                ORDER BY id ASC LIMIT 1
-            ";
-            $traceStmt = $conn->prepare($traceSql);
-            $traceStmt->bind_param("s", $item_no);
-            $traceStmt->execute();
-            $traceResult = $traceStmt->get_result();
-            $traceData = $traceResult->fetch_assoc();
-            $traceStmt->close();
-
-            $origin_type = $traceData['origin_type'] ?? 'PAR';
-            $origin_user = $traceData['origin_user_id'] ?? null;
-        } else {
-            // ✅ 4. If transferring directly from PAR or ICS
-            $origin_type = $asset_type;
-
-            $getAssetSql = "SELECT current_user_id FROM assets WHERE item_no = ? AND type = ?";
-            $getStmt = $conn->prepare($getAssetSql);
-            $getStmt->bind_param("ss", $item_no, $asset_type);
-            $getStmt->execute();
-            $assetResult = $getStmt->get_result();
-            $original = $assetResult->fetch_assoc();
-            $getStmt->close();
-
-            $origin_user = $original['current_user_id'] ?? null;
-        }
-
-        // ✅ 5. Insert the new PTR record (trace origin correctly)
-        $insertSql = "
-            INSERT INTO assets (item_no, type, current_user_id, date_acquired, origin_type, origin_user_id)
-            VALUES (?, 'PTR', ?, ?, ?, ?)
+        // ✅ 4. Update the existing asset record
+        $updateAssetSql = "
+            UPDATE assets
+            SET 
+                current_user_id = ?,     -- new owner
+                type = 'PTR',            -- now marked as transferred
+                date_acquired = ?,       -- transfer date
+                origin_type = ?,         -- original document type (PAR or ICS)
+                origin_user_id = ?       -- previous owner
+            WHERE item_no = ?
         ";
-        $insertStmt = $conn->prepare($insertSql);
-        $insertStmt->bind_param("ssssi", $item_no, $new_owner, $transfer_date, $origin_type, $origin_user);
-        $insertStmt->execute();
-        $insertStmt->close();
+        $updateStmt = $conn->prepare($updateAssetSql);
+        $updateStmt->bind_param("sssis", $new_owner, $transfer_date, $asset_type, $prev_owner, $item_no);
+        $updateStmt->execute();
+        $updateStmt->close();
     }
 
-    $stmt->close();
     $conn->commit();
 
     echo json_encode([
         "success" => true,
-        "message" => "Transfer completed successfully. Origin traced correctly."
+        "message" => "PTR transfer completed successfully — existing assets updated without duplication."
     ]);
 
 } catch (Exception $e) {
@@ -137,3 +113,4 @@ try {
         "message" => "Transaction failed: " . $e->getMessage()
     ]);
 }
+?>
