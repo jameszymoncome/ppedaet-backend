@@ -8,6 +8,19 @@ $conn = $database->conn;
 
 $sql = "
 /* PAR (not yet transferred or only pending transfer) */
+WITH assets_latest AS (
+  SELECT a1.*
+  FROM assets a1
+  JOIN (
+    SELECT item_no, MAX(date_acquired) AS max_date
+    FROM assets
+    GROUP BY item_no
+  ) amax
+    ON a1.item_no = amax.item_no
+   AND a1.date_acquired = amax.max_date
+)
+
+/* === PAR items (active, not transferred) === */
 SELECT
     p.propertyNo AS itemNo,
     CONCAT(u.firstname, ' ', u.lastname) AS assigned_to,
@@ -20,28 +33,32 @@ SELECT
     'PAR' AS document_type,
     p.parNo AS document_no,
     p.status,
-    a.date_acquired
+    a.date_acquired,
+    a.inspection_status
 FROM par p
-LEFT JOIN assets a 
-    ON a.item_no = p.propertyNo AND a.type = 'PAR'
-LEFT JOIN users u 
+LEFT JOIN assets_latest a
+    ON a.item_no = p.propertyNo
+   AND a.type = 'PAR'
+LEFT JOIN users u
     ON a.current_user_id = u.user_id
 WHERE p.status = 'Assigned'
-  AND p.propertyNo NOT IN (
-      SELECT ati.propertyNo
+  AND NOT EXISTS (
+      SELECT 1
       FROM asset_transfer_items ati
       JOIN asset_transfer atf ON ati.transfer_id = atf.id
-      WHERE atf.status = 'Completed' AND atf.type = 'PAR'
+      WHERE atf.status = 'Completed'
+        AND atf.type = 'PAR'
+        AND TRIM(ati.propertyNo) = TRIM(p.propertyNo)
   )
 
 UNION ALL
 
-/* ICS (not yet transferred or only pending transfer) */
+/* === ICS items (active, not transferred) === */
 SELECT
     i.inventoryNo AS itemNo,
-    CONCAT(u.firstname, ' ', u.lastname) AS assigned_to,
-    u.user_id AS user_id,
-    u.department,
+    CONCAT(u2.firstname, ' ', u2.lastname) AS assigned_to,
+    u2.user_id AS user_id,
+    u2.department,
     i.article,
     i.description,
     i.model,
@@ -49,23 +66,27 @@ SELECT
     'ICS' AS document_type,
     i.icsNo AS document_no,
     i.status,
-    a.date_acquired
+    a2.date_acquired,
+    a2.inspection_status
 FROM ics i
-LEFT JOIN assets a 
-    ON a.item_no = i.inventoryNo AND a.type = 'ICS'
-LEFT JOIN users u 
-    ON a.current_user_id = u.user_id
+LEFT JOIN assets_latest a2
+    ON a2.item_no = i.inventoryNo
+   AND a2.type = 'ICS'
+LEFT JOIN users u2
+    ON a2.current_user_id = u2.user_id
 WHERE i.status = 'Assigned'
-  AND i.inventoryNo NOT IN (
-      SELECT ati.propertyNo
+  AND NOT EXISTS (
+      SELECT 1
       FROM asset_transfer_items ati
       JOIN asset_transfer atf ON ati.transfer_id = atf.id
-      WHERE atf.status = 'Completed' AND atf.type = 'ICS'
+      WHERE atf.status = 'Completed'
+        AND atf.type = 'ICS'
+        AND TRIM(ati.propertyNo) = TRIM(i.inventoryNo)
   )
 
 UNION ALL
 
-/* PTR (show completed transfers with origin details) */
+/* === PTR items (completed transfers, unique per document_no) === */
 SELECT
     ati.propertyNo AS itemNo,
     CONCAT(u_to.firstname, ' ', u_to.lastname) AS assigned_to,
@@ -78,17 +99,25 @@ SELECT
     CONCAT('PTR (from ', atf.type, ')') AS document_type,
     atf.ptr_no AS document_no,
     'Assigned' AS status,
-    atf.transfer_date AS date_acquired
+    atf.transfer_date AS date_acquired,
+    al.inspection_status
 FROM asset_transfer atf
-JOIN asset_transfer_items ati ON ati.transfer_id = atf.id
-LEFT JOIN users u_to ON atf.to_officer = u_to.user_id
+JOIN asset_transfer_items ati 
+    ON ati.transfer_id = atf.id
+LEFT JOIN users u_to 
+    ON atf.to_officer = u_to.user_id
 LEFT JOIN par p 
-    ON atf.type = 'PAR' AND TRIM(ati.propertyNo) = TRIM(p.propertyNo)
+    ON atf.type = 'PAR' 
+   AND TRIM(ati.propertyNo) = TRIM(p.propertyNo)
 LEFT JOIN ics i 
-    ON atf.type = 'ICS' AND TRIM(ati.propertyNo) = TRIM(i.inventoryNo)
+    ON atf.type = 'ICS' 
+   AND TRIM(ati.propertyNo) = TRIM(i.inventoryNo)
+LEFT JOIN assets_latest al 
+    ON TRIM(al.item_no) = TRIM(ati.propertyNo)
 WHERE atf.status = 'Completed'
 
-ORDER BY date_acquired DESC
+ORDER BY date_acquired DESC;
+
 ";
 
 $result = $conn->query($sql);

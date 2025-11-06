@@ -17,7 +17,24 @@ try {
     $database = new Database();
     $conn = $database->conn;
 
-    $query = "SELECT categoryID AS id, categoryName AS name, 'Active' AS status FROM categorycode ORDER BY categoryID DESC";
+    $query = "SELECT 
+                categoryID AS id,
+                categoryName AS name,
+                'Active' AS status,
+                CASE 
+                    WHEN SUM(structureType IN ('Wood','Mix','Concrete')) > 0 THEN 
+                        JSON_OBJECT(
+                            'Wood', MAX(CASE WHEN structureType = 'Wood' THEN usefulness END),
+                            'Mix', MAX(CASE WHEN structureType = 'Mix' THEN usefulness END),
+                            'Concrete', MAX(CASE WHEN structureType = 'Concrete' THEN usefulness END)
+                        )
+                    ELSE 
+                        MAX(usefulness)
+                END AS usefulness
+            FROM categorycode
+            GROUP BY categoryID, categoryName
+            ORDER BY categoryID;
+";
     $result = $conn->query($query);
 
     if (!$result) {

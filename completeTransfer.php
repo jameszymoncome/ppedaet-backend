@@ -16,6 +16,9 @@ require_once 'db_connection.php';
 $database = new Database();
 $conn = $database->conn;
 
+// ⚙️ Enable MySQLi to throw exceptions when errors occur
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(["success" => false, "message" => "Invalid request"]);
     exit;
@@ -34,7 +37,7 @@ if (!isset($_FILES['signed_doc']) || $_FILES['signed_doc']['error'] !== UPLOAD_E
     exit;
 }
 
-/* Save file */
+/* 🗂️ Save file */
 $uploadDir = 'uploads/signed_docs/';
 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
@@ -46,10 +49,10 @@ if (!move_uploaded_file($_FILES['signed_doc']['tmp_name'], $filePath)) {
     exit;
 }
 
-/* Start transaction */
-$conn->begin_transaction();
-
 try {
+    // ✅ Start transaction
+    $conn->begin_transaction();
+
     // ✅ 1. Update asset_transfer status
     $updateTransferSql = "UPDATE asset_transfer SET status = ?, signed_doc = ? WHERE ptr_no = ?";
     $stmt = $conn->prepare($updateTransferSql);
@@ -74,43 +77,67 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // ✅ 3. Update each asset instead of inserting new ones
+    // ✅ 3. Process each asset in this PTR
     while ($row = $result->fetch_assoc()) {
         $item_no = $row['item_no'];
-        $asset_type = $row['asset_type']; // PAR / ICS / PTR
+        $asset_type = $row['asset_type']; // original doc type (PAR/ICS/PTR)
         $new_owner = $row['new_owner'];
         $prev_owner = $row['prev_owner'];
         $transfer_date = $row['transfer_date'];
+        $new_type = 'PTR'; // now latest type is PTR
+        $remarks = ''; // optional
 
-        // ✅ 4. Update the existing asset record
+        // ✅ 4. Update existing asset
         $updateAssetSql = "
             UPDATE assets
             SET 
                 current_user_id = ?,     -- new owner
-                type = 'PTR',            -- now marked as transferred
+                type = ?,                -- latest type
                 date_acquired = ?,       -- transfer date
-                origin_type = ?,         -- original document type (PAR or ICS)
+                origin_type = ?,         -- original document type
                 origin_user_id = ?       -- previous owner
             WHERE item_no = ?
         ";
         $updateStmt = $conn->prepare($updateAssetSql);
-        $updateStmt->bind_param("sssis", $new_owner, $transfer_date, $asset_type, $prev_owner, $item_no);
+        $updateStmt->bind_param("sssiss", $new_owner, $new_type, $transfer_date, $asset_type, $prev_owner, $item_no);
         $updateStmt->execute();
         $updateStmt->close();
+
+        // ✅ 5. Insert transfer history log
+        $insertHistorySql = "
+            INSERT INTO asset_transfer_history 
+            (item_no, from_user_id, to_user_id, from_type, to_type, transfer_date, document_no, remarks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ";
+        $insertHistoryStmt = $conn->prepare($insertHistorySql);
+        $insertHistoryStmt->bind_param(
+            "siisssss", 
+            $item_no, 
+            $prev_owner, 
+            $new_owner, 
+            $asset_type,  // from_type
+            $new_type,    // to_type (PTR)
+            $transfer_date, 
+            $ptr_no, 
+            $remarks
+        );
+        $insertHistoryStmt->execute();
+        $insertHistoryStmt->close();
     }
 
     $conn->commit();
 
     echo json_encode([
         "success" => true,
-        "message" => "PTR transfer completed successfully — existing assets updated without duplication."
+        "message" => "PTR transfer completed successfully — existing assets updated and history recorded."
     ]);
 
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode([
         "success" => false,
-        "message" => "Transaction failed: " . $e->getMessage()
+        "message" => "Transaction failed: " . $e->getMessage(),
+        "sql_error" => $conn->error // 👈 include SQL error details
     ]);
 }
 ?>
