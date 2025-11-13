@@ -14,6 +14,7 @@ $conn = $database->conn;
 
 // ✅ Get PTR number
 $ptr_no = $_GET['ptr_no'] ?? '';
+$type = $_GET['type'] ?? '';
 
 if (!$ptr_no) {
     echo json_encode(["success" => false, "message" => "Missing ptr_no"]);
@@ -52,11 +53,11 @@ $sql = "
     LEFT JOIN users AS u_from ON atf.from_officer = u_from.user_id
     LEFT JOIN users AS u_to ON atf.to_officer = u_to.user_id
     LEFT JOIN users AS u_approver ON atf.approved_by = u_approver.user_id
-    WHERE atf.ptr_no = ?;
+    WHERE atf.ptr_no = ? AND atf.type = ?;
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $ptr_no);
+$stmt->bind_param("ss", $ptr_no, $type);
 $stmt->execute();
 $result = $stmt->get_result();
 
